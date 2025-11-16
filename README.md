@@ -78,7 +78,8 @@ heroku create your-app-name
 ### 2. Add PostgreSQL Database
 
 ```bash
-heroku addons:create heroku-postgresql:mini
+heroku addons:create heroku-postgresql:essential-0
+# Note: The 'mini' plan is deprecated. Use 'essential-0' instead ($5/month)
 ```
 
 ### 3. Set Environment Variables
@@ -115,8 +116,83 @@ git push heroku main
 ### 6. Initialize Database
 
 ```bash
-heroku run python src/main.py
+heroku run python init_db.py
 # This will create the tables
+```
+
+## 🚀 Current Deployment Status
+
+**✅ DEPLOYED AND LIVE!**
+
+- **App URL**: https://quiet-wildwood-76497-10fd279504c8.herokuapp.com
+- **Heroku App**: `quiet-wildwood-76497`
+- **Database**: PostgreSQL Essential-0 (initialized)
+- **Stripe**: Test mode configured with webhook
+- **Status**: Ready for testing!
+
+## 📝 How to Update Your Code
+
+When you make changes to your code, follow these steps to deploy updates:
+
+### 1. Make Your Changes Locally
+- Edit files in your project
+- Test locally: `python src/main.py`
+- Make sure everything works!
+
+### 2. Commit Changes to Git
+```bash
+git add .
+git commit -m "Description of your changes"
+```
+
+### 3. Deploy to Heroku
+```bash
+git push heroku main
+```
+
+That's it! Heroku will:
+- Build your app
+- Install any new dependencies
+- Restart your app with the new code
+- Usually takes 1-2 minutes
+
+### 4. Check Deployment Status
+```bash
+# View logs to see if deployment succeeded
+heroku logs --tail
+
+# Or check in browser
+# Visit: https://quiet-wildwood-76497-10fd279504c8.herokuapp.com
+```
+
+### Common Update Scenarios
+
+**Adding a new Python package:**
+1. Add to `requirements.txt`
+2. `git add requirements.txt`
+3. `git commit -m "Add new package"`
+4. `git push heroku main`
+
+**Changing database models:**
+1. Update `src/models.py`
+2. Deploy: `git push heroku main`
+3. Run migrations: `heroku run python init_db.py` (if needed)
+
+**Updating environment variables:**
+```bash
+heroku config:set VARIABLE_NAME=new_value
+# App restarts automatically
+```
+
+**Viewing current config:**
+```bash
+heroku config
+```
+
+**Rolling back to previous version:**
+```bash
+heroku releases  # See all versions
+heroku rollback v9  # Rollback to version 9
 ```
 
 ## Testing Payments

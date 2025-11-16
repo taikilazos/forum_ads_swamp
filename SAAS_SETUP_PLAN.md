@@ -236,7 +236,8 @@ Switch from TEST to LIVE when:
 - **What happens?** Your app goes LIVE on the internet! You'll get a URL like `https://yourapp.herokuapp.com`
 
 **Step 8: Add Your Database** 🗄️
-- In terminal: `heroku addons:create heroku-postgresql:mini`
+- In terminal: `heroku addons:create heroku-postgresql:essential-0`
+- **Note**: The `mini` plan is deprecated. Use `essential-0` instead (same $5/month price)
 - That's it! PostgreSQL is now attached to your app.
 - **What you're doing:** Creating a place to store all your user accounts and payment info.
 
@@ -268,6 +269,33 @@ Switch from TEST to LIVE when:
 - **What you're doing:** Making sure the whole flow works perfectly.
 
 **🎊 CONGRATULATIONS!** Your SaaS is LIVE on the internet! Anyone can visit it, sign up, and pay you!
+
+**✅ YOUR CURRENT STATUS:**
+- **App URL**: https://quiet-wildwood-76497-10fd279504c8.herokuapp.com
+- **Database**: PostgreSQL Essential-0 (initialized ✅)
+- **Stripe**: Test mode configured ✅
+- **Webhook**: Configured ✅
+- **Ready to test!** 🎉
+
+---
+
+## 🔄 HOW TO UPDATE YOUR CODE
+
+**When you want to make changes:**
+
+1. **Edit files locally** (test with `python src/main.py`)
+2. **Commit changes:**
+   ```bash
+   git add .
+   git commit -m "Your change description"
+   ```
+3. **Deploy:**
+   ```bash
+   git push heroku main
+   ```
+4. **Done!** Heroku rebuilds and restarts automatically (1-2 minutes)
+
+**That's it!** Just 3 commands to update your live app. 🚀
 
 ---
 

@@ -12,7 +12,7 @@ import sys
 import os
 # Add parent directory to path so we can import models
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from src.models import db, User, Drawing
+from src.models import db, User, Drawing, PaymentHistory
 
 # Load environment variables
 load_dotenv()
@@ -236,6 +236,24 @@ def success():
                 current_user.subscription_active = True
                 current_user.stripe_customer_id = checkout_session.customer
                 current_user.stripe_subscription_id = checkout_session.subscription
+                
+                # Create payment history record
+                amount = 1.0  # Default
+                if tier == 'pro':
+                    amount = 2.0
+                elif tier == 'premium':
+                    amount = 5.0
+                
+                payment = PaymentHistory(
+                    user_id=current_user.id,
+                    subscription_tier=tier,
+                    amount=amount,
+                    stripe_subscription_id=checkout_session.subscription,
+                    subscription_start=datetime.utcnow(),
+                    subscription_end=None,  # Active subscription
+                    status='paid'
+                )
+                db.session.add(payment)
                 db.session.commit()
                 
                 print(f"DEBUG: Updated user {current_user.email} subscription to {tier}")
@@ -291,21 +309,67 @@ def webhook():
             if user_id:
                 user = User.query.get(int(user_id))
                 if user:
-                    # Determine tier from price
-                    # NOTE: This might need adjustment based on your Stripe setup
-                    price_id = session.get('line_items', {}).get('data', [{}])[0].get('price', {}).get('id', '')
-                    tier = 'basic'
+                    # Get line items to determine price ID (checkout session doesn't include line_items directly)
+                    session_id = session.get('id')
+                    line_items = stripe.checkout.Session.list_line_items(session_id)
+                    
+                    # Determine tier from price ID
+                    price_id = None
+                    if line_items and len(line_items.data) > 0:
+                        price_id = line_items.data[0].price.id
+                    
+                    tier = 'basic'  # Default
                     if price_id == STRIPE_PRICE_PRO:
                         tier = 'pro'
                     elif price_id == STRIPE_PRICE_PREMIUM:
                         tier = 'premium'
+                    elif price_id == STRIPE_PRICE_BASIC:
+                        tier = 'basic'
                     
+                    print(f"Webhook: User {user.email}, Price ID: {price_id}, Tier: {tier}")
+                    
+                    # Update user subscription
                     user.subscription_tier = tier
                     user.subscription_active = True
                     user.stripe_customer_id = session.get('customer')
                     user.stripe_subscription_id = session.get('subscription')
+                    
+                    # Get amount from line items
+                    amount = 0.0
+                    if line_items and len(line_items.data) > 0:
+                        amount = line_items.data[0].amount_total / 100.0  # Convert from cents
+                    
+                    # Fallback to tier-based pricing if amount is 0
+                    if amount == 0:
+                        if tier == 'pro':
+                            amount = 2.0
+                        elif tier == 'premium':
+                            amount = 5.0
+                        else:
+                            amount = 1.0
+                    
+                    # Get subscription start date from Stripe subscription if available
+                    subscription_start = datetime.utcnow()
+                    if session.get('subscription'):
+                        try:
+                            subscription = stripe.Subscription.retrieve(session.get('subscription'))
+                            subscription_start = datetime.fromtimestamp(subscription.created)
+                        except:
+                            pass  # Use current time as fallback
+                    
+                    # Create payment history record
+                    payment = PaymentHistory(
+                        user_id=user.id,
+                        subscription_tier=tier,
+                        amount=amount,
+                        stripe_subscription_id=session.get('subscription'),
+                        subscription_start=subscription_start,
+                        subscription_end=None,  # Active subscription
+                        status='paid'
+                    )
+                    db.session.add(payment)
                     db.session.commit()
-                    print(f"Updated subscription for user {user.email}")
+                    print(f"Webhook: Updated subscription for user {user.email} to {tier} tier")
         
         return jsonify({'status': 'success'}), 200
     except ValueError as e:
@@ -378,6 +442,188 @@ def gallery():
     # Get all drawings, ordered by newest first
     drawings = Drawing.query.order_by(Drawing.created_at.desc()).all()
     return render_template('gallery.html', drawings=drawings)
+
+
+@app.route('/manage-subscription')
+@login_required
+def manage_subscription():
+    """Subscription management page with upgrade/downgrade options."""
+    # Verify user has a valid Stripe subscription
+    if not current_user.subscription_active or not current_user.stripe_subscription_id:
+        flash('You need an active subscription to manage your plan. Please subscribe first.', 'error')
+        return redirect(url_for('subscribe'))
+    
+    # Verify subscription exists in Stripe
+    try:
+        subscription = stripe.Subscription.retrieve(current_user.stripe_subscription_id)
+        if subscription.status not in ['active', 'trialing']:
+            flash('Your subscription is not active. Please subscribe again.', 'error')
+            return redirect(url_for('subscribe'))
+    except stripe.error.InvalidRequestError:
+        flash('Subscription not found in Stripe. Please subscribe again.', 'error')
+        return redirect(url_for('subscribe'))
+    
+    return render_template('manage_subscription.html', 
+                         user=current_user,
+                         price_basic=STRIPE_PRICE_BASIC,
+                         price_pro=STRIPE_PRICE_PRO,
+                         price_premium=STRIPE_PRICE_PREMIUM)
+
+
+@app.route('/upgrade-subscription', methods=['POST'])
+@login_required
+def upgrade_subscription():
+    """Handle subscription upgrade/downgrade."""
+    # Strict validation - must have active subscription AND Stripe subscription ID
+    if not current_user.subscription_active or not current_user.stripe_subscription_id:
+        flash('You need an active subscription to change plans. Please subscribe first.', 'error')
+        return redirect(url_for('subscribe'))
+    
+    new_price_id = request.form.get('price_id')
+    if not new_price_id:
+        flash('Please select a plan.', 'error')
+        return redirect(url_for('manage_subscription'))
+    
+    try:
+        # Verify subscription exists and is active in Stripe
+        subscription = stripe.Subscription.retrieve(current_user.stripe_subscription_id)
+        
+        if subscription.status not in ['active', 'trialing']:
+            flash('Your subscription is not active. Please subscribe again.', 'error')
+            return redirect(url_for('subscribe'))
+        
+        # Prevent upgrading to same plan
+        current_price_id = subscription['items']['data'][0].price.id
+        if current_price_id == new_price_id:
+            flash('You are already on this plan!', 'info')
+            return redirect(url_for('manage_subscription'))
+        
+        # Update subscription to new price with immediate billing
+        # 'always_invoice' creates prorations and invoices the customer immediately
+        stripe.Subscription.modify(
+            current_user.stripe_subscription_id,
+            items=[{
+                'id': subscription['items']['data'][0].id,
+                'price': new_price_id,
+            }],
+            proration_behavior='always_invoice'  # Invoice immediately for prorated amount
+        )
+        
+        # Determine new tier
+        tier = 'basic'
+        if new_price_id == STRIPE_PRICE_PRO:
+            tier = 'pro'
+        elif new_price_id == STRIPE_PRICE_PREMIUM:
+            tier = 'premium'
+        
+        current_user.subscription_tier = tier
+        db.session.commit()
+        
+        flash(f'Subscription changed to {tier.title()} plan! You have been charged immediately.', 'success')
+    except stripe.error.InvalidRequestError as e:
+        print(f"Stripe error upgrading subscription: {e}")
+        flash('Subscription not found in Stripe. Please subscribe again.', 'error')
+    except Exception as e:
+        print(f"Error upgrading subscription: {e}")
+        flash(f'Error changing subscription: {str(e)}', 'error')
+    
+    return redirect(url_for('dashboard'))
+
+
+@app.route('/sync-subscription')
+@login_required
+def sync_subscription():
+    """Manually sync subscription status from Stripe (for debugging/fixing)."""
+    if not current_user.stripe_subscription_id:
+        flash('No Stripe subscription ID found. Please subscribe first.', 'error')
+        return redirect(url_for('subscribe'))
+    
+    try:
+        # Retrieve subscription from Stripe
+        subscription = stripe.Subscription.retrieve(current_user.stripe_subscription_id)
+        
+        # Get the price ID from subscription
+        price_id = subscription['items']['data'][0].price.id
+        
+        # Determine tier
+        tier = 'basic'
+        if price_id == STRIPE_PRICE_PRO:
+            tier = 'pro'
+        elif price_id == STRIPE_PRICE_PREMIUM:
+            tier = 'premium'
+        
+        # Update user
+        current_user.subscription_tier = tier
+        current_user.subscription_active = subscription.status in ['active', 'trialing']
+        current_user.stripe_customer_id = subscription.customer
+        current_user.stripe_subscription_id = subscription.id
+        
+        db.session.commit()
+        
+        flash(f'Subscription synced! Status: {subscription.status}, Tier: {tier.title()}', 'success')
+    except stripe.error.InvalidRequestError as e:
+        flash(f'Subscription not found in Stripe: {str(e)}', 'error')
+    except Exception as e:
+        flash(f'Error syncing subscription: {str(e)}', 'error')
+        print(f"Sync error: {e}")
+    
+    return redirect(url_for('dashboard'))
+
+
+@app.route('/payment-history')
+@login_required
+def payment_history():
+    """Display payment history with subscription duration."""
+    # Backfill payment history for users who subscribed before PaymentHistory was added
+    if current_user.subscription_active and current_user.stripe_subscription_id:
+        existing_payment = PaymentHistory.query.filter_by(
+            user_id=current_user.id,
+            stripe_subscription_id=current_user.stripe_subscription_id,
+            status='paid'
+        ).first()
+        
+        if not existing_payment:
+            # Create payment history record for existing subscription
+            try:
+                subscription = stripe.Subscription.retrieve(current_user.stripe_subscription_id)
+                amount = 1.0
+                if current_user.subscription_tier == 'pro':
+                    amount = 2.0
+                elif current_user.subscription_tier == 'premium':
+                    amount = 5.0
+                
+                # Get subscription start date from Stripe
+                subscription_start = datetime.fromtimestamp(subscription.created)
+                
+                payment = PaymentHistory(
+                    user_id=current_user.id,
+                    subscription_tier=current_user.subscription_tier,
+                    amount=amount,
+                    stripe_subscription_id=current_user.stripe_subscription_id,
+                    subscription_start=subscription_start,
+                    subscription_end=None,  # Active subscription
+                    status='paid'
+                )
+                db.session.add(payment)
+                db.session.commit()
+                print(f"Created payment history for existing subscription: {current_user.email}")
+            except Exception as e:
+                print(f"Error backfilling payment history: {e}")
+                db.session.rollback()
+    
+    payments = PaymentHistory.query.filter_by(user_id=current_user.id)\
+        .order_by(PaymentHistory.payment_date.desc()).all()
+    
+    # Get tier prices for display
+    tier_prices = {
+        'basic': 1.0,
+        'pro': 2.0,
+        'premium': 5.0
+    }
+    
+    return render_template('payment_history.html', 
+                         payments=payments,
+                         tier_prices=tier_prices)
 
 
 # ==================== INITIALIZATION ====================

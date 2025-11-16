@@ -15,9 +15,15 @@
                 {% if user.subscription_active %}
                     <p class="lead">✅ Active Subscription: <strong>{{ user.subscription_tier|title }}</strong></p>
                     <p>You can draw unlimited times!</p>
+                    <a href="{{ url_for('manage_subscription') }}" class="btn btn-outline-primary me-2">Manage Subscription</a>
+                    <a href="{{ url_for('payment_history') }}" class="btn btn-outline-secondary">Payment History</a>
                 {% else %}
                     <p class="lead">❌ No Active Subscription</p>
                     <p>You've used <strong>{{ user.drawings_count }}</strong> of 1 free drawing(s).</p>
+                    {% if user.stripe_subscription_id %}
+                        <p class="text-muted small">You have a Stripe subscription ID but it's not active. 
+                        <a href="{{ url_for('sync_subscription') }}">Click here to sync from Stripe</a>.</p>
+                    {% endif %}
                     <a href="{{ url_for('subscribe') }}" class="btn btn-primary">Subscribe Now</a>
                 {% endif %}
             </div>

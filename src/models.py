@@ -54,3 +54,34 @@ class Drawing(db.Model):
     def __repr__(self):
         return f'<Drawing {self.id} by {self.user_email}>'
 
+
+class PaymentHistory(db.Model):
+    """Payment history model to track subscription payments."""
+    __tablename__ = 'payment_history'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    subscription_tier = db.Column(db.String(20), nullable=False)  # 'basic', 'pro', 'premium'
+    amount = db.Column(db.Float, nullable=False)  # Payment amount
+    currency = db.Column(db.String(3), default='usd')
+    stripe_payment_intent_id = db.Column(db.String(255), nullable=True)
+    stripe_subscription_id = db.Column(db.String(255), nullable=True)
+    subscription_start = db.Column(db.DateTime, nullable=False)
+    subscription_end = db.Column(db.DateTime, nullable=True)  # None if active
+    payment_date = db.Column(db.DateTime, default=datetime.utcnow)
+    status = db.Column(db.String(20), default='paid')  # 'paid', 'refunded', 'failed'
+    
+    # Relationship
+    user = db.relationship('User', backref='payment_history')
+    
+    def __repr__(self):
+        return f'<PaymentHistory {self.id} - {self.subscription_tier} - ${self.amount}>'
+    
+    def get_duration_days(self):
+        """Calculate subscription duration in days."""
+        if self.subscription_end:
+            delta = self.subscription_end - self.subscription_start
+        else:
+            delta = datetime.utcnow() - self.subscription_start
+        return delta.days
+
