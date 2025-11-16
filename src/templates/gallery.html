@@ -1,0 +1,228 @@
+{% extends "base.html" %}
+
+{% block title %}Gallery - DrawSaaS{% endblock %}
+
+{% block extra_head %}
+<style>
+    .gallery-container {
+        position: relative;
+        min-height: 100vh;
+        overflow: hidden;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    }
+    .floating-drawing {
+        position: absolute;
+        max-width: 200px;
+        max-height: 200px;
+        background: transparent;
+        padding: 0;
+        margin: 0;
+        border: none;
+        transition: transform 0.1s linear;
+        cursor: pointer;
+    }
+    .floating-drawing img {
+        width: 100%;
+        height: auto;
+        display: block;
+        filter: drop-shadow(0 2px 8px rgba(0,0,0,0.3));
+        border: none;
+        outline: none;
+    }
+    .drawing-label {
+        display: none; /* Hide by default */
+    }
+    .drawing-tooltip {
+        position: absolute;
+        bottom: -80px;
+        left: 50%;
+        transform: translateX(-50%);
+        background: rgba(0, 0, 0, 0.9);
+        color: white;
+        padding: 8px 12px;
+        border-radius: 6px;
+        font-size: 0.75rem;
+        white-space: normal;
+        max-width: 250px;
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity 0.3s ease;
+        z-index: 1000;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+    }
+    .drawing-tooltip::before {
+        content: '';
+        position: absolute;
+        top: -5px;
+        left: 50%;
+        transform: translateX(-50%);
+        border-left: 5px solid transparent;
+        border-right: 5px solid transparent;
+        border-bottom: 5px solid rgba(0, 0, 0, 0.9);
+    }
+    .floating-drawing:hover .drawing-tooltip {
+        opacity: 1;
+    }
+    .drawing-tooltip .tooltip-creator {
+        font-weight: bold;
+        margin-bottom: 2px;
+    }
+    .drawing-tooltip .tooltip-message {
+        font-style: italic;
+        margin: 4px 0;
+        color: #fff;
+        max-width: 200px;
+        word-wrap: break-word;
+        white-space: normal;
+    }
+    .drawing-tooltip .tooltip-date {
+        font-size: 0.7rem;
+        color: #ccc;
+    }
+    .gallery-header {
+        position: relative;
+        z-index: 10;
+        padding: 20px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="gallery-container" id="galleryContainer">
+    <div class="gallery-header">
+        <h2 class="text-center text-white mb-4">🎨 Community Gallery</h2>
+        <p class="text-center text-white mb-5">Watch all drawings bounce around like the DVD logo!</p>
+    </div>
+    
+        {% if drawings %}
+            {% for drawing in drawings %}
+            <div class="floating-drawing" 
+                 data-drawing-id="{{ drawing.id }}"
+                 style="left: {{ (loop.index0 * 150 + 50) % 70 }}px; 
+                        top: {{ (loop.index0 * 120 + 50) % 60 }}px;">
+                <img src="{{ drawing.image_data }}" alt="Drawing by {{ drawing.user_email }}" onerror="this.style.display='none'">
+                <div class="drawing-tooltip">
+                    <div class="tooltip-creator">👤 {{ drawing.user_email }}</div>
+                    {% if drawing.message %}
+                    <div class="tooltip-message">💬 "{{ drawing.message }}"</div>
+                    {% endif %}
+                    <div class="tooltip-date">📅 {{ drawing.created_at.strftime('%B %d, %Y') }}</div>
+                </div>
+            </div>
+            {% endfor %}
+    {% else %}
+        <div class="text-center text-white" style="position: relative; z-index: 10; padding-top: 100px;">
+            <p class="lead">No drawings yet. Be the first to draw!</p>
+            {% if current_user.is_authenticated %}
+                <a href="{{ url_for('draw') }}" class="btn btn-light btn-lg">Start Drawing</a>
+            {% else %}
+                <a href="{{ url_for('signup') }}" class="btn btn-light btn-lg">Sign Up to Draw</a>
+            {% endif %}
+        </div>
+    {% endif %}
+</div>
+
+<script>
+// DVD Logo-style bouncing animation for drawings
+document.addEventListener('DOMContentLoaded', function() {
+    const container = document.getElementById('galleryContainer');
+    const drawings = document.querySelectorAll('.floating-drawing');
+    
+    if (drawings.length === 0) return;
+    
+    const containerRect = container.getBoundingClientRect();
+    const containerWidth = containerRect.width;
+    const containerHeight = containerRect.height;
+    
+    // Initialize each drawing with random velocity and position
+    drawings.forEach(function(drawing, index) {
+        const rect = drawing.getBoundingClientRect();
+        const drawingWidth = rect.width;
+        const drawingHeight = rect.height;
+        
+        // Random starting position
+        let x = Math.random() * (containerWidth - drawingWidth);
+        let y = Math.random() * (containerHeight - drawingHeight);
+        
+        // Random velocity (speed and direction)
+        let vx = (Math.random() - 0.5) * 2 + 1;
+        let vy = (Math.random() - 0.5) * 2 + 1;
+        
+        // Make sure it's moving
+        if (Math.abs(vx) < 0.5) vx = vx > 0 ? 0.5 : -0.5;
+        if (Math.abs(vy) < 0.5) vy = vy > 0 ? 0.5 : -0.5;
+        
+        // Click interaction state
+        let spinAngle = 0;
+        let speedMultiplier = 1;
+        let scale = 1;
+        let clickEffectActive = false;
+        
+        // Click handler - fun interactions!
+        drawing.addEventListener('click', function() {
+            if (clickEffectActive) return; // Prevent spam clicking
+            
+            clickEffectActive = true;
+            spinAngle = 360; // Full spin
+            speedMultiplier = 3; // 3x speed
+            scale = 1.3; // Grow 30%
+            
+            // Reset after 2 seconds
+            setTimeout(function() {
+                spinAngle = 0;
+                speedMultiplier = 1;
+                scale = 1;
+                clickEffectActive = false;
+                drawing.style.transform = '';
+            }, 2000);
+        });
+        
+        // Add slight delay to each drawing for variety
+        setTimeout(function() {
+            function animate() {
+                // Update position with speed multiplier
+                x += vx * speedMultiplier;
+                y += vy * speedMultiplier;
+                
+                // Bounce off walls
+                if (x <= 0 || x + drawingWidth >= containerWidth) {
+                    vx = -vx;
+                    x = Math.max(0, Math.min(x, containerWidth - drawingWidth));
+                }
+                if (y <= 0 || y + drawingHeight >= containerHeight) {
+                    vy = -vy;
+                    y = Math.max(0, Math.min(y, containerHeight - drawingHeight));
+                }
+                
+                // Apply spin and scale transforms
+                let transform = `translate(${x}px, ${y}px)`;
+                if (spinAngle > 0) {
+                    transform += ` rotate(${spinAngle}deg)`;
+                    spinAngle = Math.max(0, spinAngle - 15); // Decay spin
+                }
+                if (scale !== 1) {
+                    transform += ` scale(${scale})`;
+                    if (scale > 1) scale = Math.max(1, scale - 0.02); // Decay scale
+                }
+                
+                drawing.style.left = '0';
+                drawing.style.top = '0';
+                drawing.style.transform = transform;
+                
+                // Continue animation
+                requestAnimationFrame(animate);
+            }
+            
+            animate();
+        }, index * 100); // Stagger start times
+    });
+    
+    // Handle window resize
+    window.addEventListener('resize', function() {
+        const newRect = container.getBoundingClientRect();
+        // Could reset positions if needed, but let them continue bouncing
+    });
+});
+</script>
+{% endblock %}
+

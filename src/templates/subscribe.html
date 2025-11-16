@@ -1,0 +1,100 @@
+{% extends "base.html" %}
+
+{% block title %}Subscribe - DrawSaaS{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-lg-10 mx-auto">
+        <h2 class="text-center mb-4">Choose Your Plan</h2>
+        <p class="text-center mb-5">Upgrade to draw unlimited times!</p>
+        
+        <div class="row">
+            <!-- Basic Plan -->
+            <div class="col-md-4 mb-4">
+                <div class="card h-100">
+                    <div class="card-header bg-primary text-white text-center">
+                        <h3>Basic</h3>
+                        <h2>$1<span class="fs-6">/month</span></h2>
+                    </div>
+                    <div class="card-body">
+                        <ul class="list-unstyled">
+                            <li>✅ Unlimited drawings</li>
+                            <li>✅ Access to gallery</li>
+                            <li>✅ Basic support</li>
+                        </ul>
+                    </div>
+                    <div class="card-footer">
+                        <form method="POST" action="{{ url_for('create_checkout_session') }}">
+                            <input type="hidden" name="price_id" value="{{ price_basic }}">
+                            <button type="submit" class="btn btn-primary w-100" {% if not price_basic %}disabled{% endif %}>
+                                Subscribe
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Pro Plan -->
+            <div class="col-md-4 mb-4">
+                <div class="card h-100 border-primary">
+                    <div class="card-header bg-success text-white text-center">
+                        <h3>Pro</h3>
+                        <h2>$2<span class="fs-6">/month</span></h2>
+                        <span class="badge bg-light text-dark">Popular</span>
+                    </div>
+                    <div class="card-body">
+                        <ul class="list-unstyled">
+                            <li>✅ Unlimited drawings</li>
+                            <li>✅ Access to gallery</li>
+                            <li>✅ Priority support</li>
+                            <li>✅ All Basic features</li>
+                        </ul>
+                    </div>
+                    <div class="card-footer">
+                        <form method="POST" action="{{ url_for('create_checkout_session') }}">
+                            <input type="hidden" name="price_id" value="{{ price_pro }}">
+                            <button type="submit" class="btn btn-success w-100" {% if not price_pro %}disabled{% endif %}>
+                                Subscribe
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Premium Plan -->
+            <div class="col-md-4 mb-4">
+                <div class="card h-100">
+                    <div class="card-header bg-warning text-dark text-center">
+                        <h3>Premium</h3>
+                        <h2>$5<span class="fs-6">/month</span></h2>
+                    </div>
+                    <div class="card-body">
+                        <ul class="list-unstyled">
+                            <li>✅ Unlimited drawings</li>
+                            <li>✅ Access to gallery</li>
+                            <li>✅ Premium support</li>
+                            <li>✅ All Pro features</li>
+                            <li>✅ Early access to new features</li>
+                        </ul>
+                    </div>
+                    <div class="card-footer">
+                        <form method="POST" action="{{ url_for('create_checkout_session') }}">
+                            <input type="hidden" name="price_id" value="{{ price_premium }}">
+                            <button type="submit" class="btn btn-warning w-100" {% if not price_premium %}disabled{% endif %}>
+                                Subscribe
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        {% if not price_basic or not price_pro or not price_premium %}
+        <div class="alert alert-warning mt-4">
+            <strong>Note:</strong> Please set up Stripe Price IDs in your environment variables to enable subscriptions.
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+

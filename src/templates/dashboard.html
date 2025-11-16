@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - DrawSaaS{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-lg-8 mx-auto">
+        <h2 class="mb-4">Dashboard</h2>
+        
+        <div class="card mb-4">
+            <div class="card-header">
+                <h4>Subscription Status</h4>
+            </div>
+            <div class="card-body">
+                {% if user.subscription_active %}
+                    <p class="lead">✅ Active Subscription: <strong>{{ user.subscription_tier|title }}</strong></p>
+                    <p>You can draw unlimited times!</p>
+                {% else %}
+                    <p class="lead">❌ No Active Subscription</p>
+                    <p>You've used <strong>{{ user.drawings_count }}</strong> of 1 free drawing(s).</p>
+                    <a href="{{ url_for('subscribe') }}" class="btn btn-primary">Subscribe Now</a>
+                {% endif %}
+            </div>
+        </div>
+
+        <div class="card mb-4">
+            <div class="card-header">
+                <h4>Your Drawings</h4>
+            </div>
+            <div class="card-body">
+                <p>You've created <strong>{{ user.drawings_count }}</strong> drawing(s).</p>
+                <a href="{{ url_for('draw') }}" class="btn btn-success me-2">Create New Drawing</a>
+                <a href="{{ url_for('gallery') }}" class="btn btn-outline-primary">View Gallery</a>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <h4>Account Info</h4>
+            </div>
+            <div class="card-body">
+                <p><strong>Email:</strong> {{ user.email }}</p>
+                <p><strong>Member since:</strong> {{ user.created_at.strftime('%B %d, %Y') }}</p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
