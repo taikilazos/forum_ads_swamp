@@ -5,8 +5,8 @@
 {% block content %}
 <div class="row">
     <div class="col-lg-10 mx-auto">
-        <h2 class="text-center mb-4">Choose Your Plan</h2>
-        <p class="text-center mb-5">Upgrade to draw unlimited times!</p>
+        <h2 class="text-center mb-4">Leave Your Mark</h2>
+        <p class="text-center mb-5">How long will your art survive?</p>
         
         <div class="row">
             <!-- Basic Plan -->
@@ -18,16 +18,17 @@
                     </div>
                     <div class="card-body">
                         <ul class="list-unstyled">
+                            <li>✅ <strong>7 Days</strong> Retention</li>
                             <li>✅ Unlimited drawings</li>
-                            <li>✅ Access to gallery</li>
-                            <li>✅ Basic support</li>
+                            <li>✅ Standard Gallery</li>
                         </ul>
+                        <small class="text-muted d-block mt-2">Drawings vanish after 1 week</small>
                     </div>
                     <div class="card-footer">
                         <form method="POST" action="{{ url_for('create_checkout_session') }}">
                             <input type="hidden" name="price_id" value="{{ price_basic }}">
                             <button type="submit" class="btn btn-primary w-100" {% if not price_basic %}disabled{% endif %}>
-                                Subscribe
+                                Survive 7 Days
                             </button>
                         </form>
                     </div>
@@ -40,21 +41,21 @@
                     <div class="card-header bg-success text-white text-center">
                         <h3>Pro</h3>
                         <h2>$2<span class="fs-6">/month</span></h2>
-                        <span class="badge bg-light text-dark">Popular</span>
+                        <span class="badge bg-light text-dark">Best Value</span>
                     </div>
                     <div class="card-body">
                         <ul class="list-unstyled">
+                            <li>✅ <strong>30 Days</strong> Retention</li>
                             <li>✅ Unlimited drawings</li>
-                            <li>✅ Access to gallery</li>
-                            <li>✅ Priority support</li>
-                            <li>✅ All Basic features</li>
+                            <li>✅ <strong>Sticker Pack 🌟</strong></li>
                         </ul>
+                        <small class="text-muted d-block mt-2">Drawings vanish after 1 month</small>
                     </div>
                     <div class="card-footer">
                         <form method="POST" action="{{ url_for('create_checkout_session') }}">
                             <input type="hidden" name="price_id" value="{{ price_pro }}">
                             <button type="submit" class="btn btn-success w-100" {% if not price_pro %}disabled{% endif %}>
-                                Subscribe
+                                Survive 30 Days
                             </button>
                         </form>
                     </div>
@@ -65,28 +66,32 @@
             <div class="col-md-4 mb-4">
                 <div class="card h-100">
                     <div class="card-header bg-warning text-dark text-center">
-                        <h3>Premium</h3>
+                        <h3>Gold</h3>
                         <h2>$5<span class="fs-6">/month</span></h2>
                     </div>
                     <div class="card-body">
                         <ul class="list-unstyled">
+                            <li>✅ <strong>FOREVER Retention</strong></li>
                             <li>✅ Unlimited drawings</li>
-                            <li>✅ Access to gallery</li>
-                            <li>✅ Premium support</li>
-                            <li>✅ All Pro features</li>
-                            <li>✅ Early access to new features</li>
+                            <li>✅ <strong>Gold Border 👑</strong></li>
+                            <li>✅ Sticker Pack 🌟</li>
                         </ul>
+                        <small class="text-muted d-block mt-2">Your art never dies.</small>
                     </div>
                     <div class="card-footer">
                         <form method="POST" action="{{ url_for('create_checkout_session') }}">
                             <input type="hidden" name="price_id" value="{{ price_premium }}">
                             <button type="submit" class="btn btn-warning w-100" {% if not price_premium %}disabled{% endif %}>
-                                Subscribe
+                                Make it Permanent
                             </button>
                         </form>
                     </div>
                 </div>
             </div>
+        </div>
+
+        <div class="text-center mt-4">
+            <p class="text-muted">Free Tier: Drawings disappear after 24 hours.</p>
         </div>
 
         {% if not price_basic or not price_pro or not price_premium %}

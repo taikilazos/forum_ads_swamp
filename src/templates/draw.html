@@ -45,6 +45,26 @@
                     </div>
                     <div class="row mb-3">
                         <div class="col-md-12">
+                            <label class="form-label">Stickers ({% if user.can_use_stickers %}Click to Select{% else %}Pro Feature 🔒{% endif %}):</label>
+                            <div class="d-flex gap-2 flex-wrap" id="stickerContainer">
+                                {% set stickers = ['😀', '❤️', '⭐', '🔥', '🐱', '🚀', '🌈', '💯'] %}
+                                {% for sticker in stickers %}
+                                    <button class="btn btn-outline-secondary sticker-btn" 
+                                            data-sticker="{{ sticker }}"
+                                            {% if not user.can_use_stickers %}disabled title="Upgrade to Pro to use stickers!"{% endif %}>
+                                        {{ sticker }}
+                                    </button>
+                                {% endfor %}
+                                {% if not user.can_use_stickers %}
+                                    <a href="{{ url_for('subscribe') }}" class="btn btn-sm btn-warning ms-2 align-self-center">Upgrade to Unlock</a>
+                                {% else %}
+                                    <button class="btn btn-outline-danger sticker-btn" data-sticker="clear" title="Clear Sticker Selection">❌</button>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                    <div class="row mb-3">
+                        <div class="col-md-12">
                             <label for="drawingMessage" class="form-label">Message (optional):</label>
                             <input type="text" class="form-control" id="drawingMessage" placeholder="Add a message to your drawing..." maxlength="500">
                             <small class="form-text text-muted">Max 500 characters</small>

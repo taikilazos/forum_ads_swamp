@@ -13,18 +13,35 @@
             </div>
             <div class="card-body">
                 {% if user.subscription_active %}
-                    <p class="lead">✅ Active Subscription: <strong>{{ user.subscription_tier|title }}</strong></p>
-                    <p>You can draw unlimited times!</p>
-                    <a href="{{ url_for('manage_subscription') }}" class="btn btn-outline-primary me-2">Manage Subscription</a>
+                    <p class="lead">✅ Active Plan: <strong>{{ user.subscription_tier|title }}</strong></p>
+                    
+                    {% if user.subscription_tier == 'premium' %}
+                        <div class="alert alert-warning">
+                            👑 <strong>Gold Status Active:</strong> Your drawings are PERMANENT and have a Gold Border!
+                        </div>
+                    {% elif user.subscription_tier == 'pro' %}
+                        <div class="alert alert-success">
+                            🌟 <strong>Pro Status Active:</strong> Your drawings stay for 30 days and you have Stickers!
+                        </div>
+                    {% elif user.subscription_tier == 'basic' %}
+                        <div class="alert alert-info">
+                            🛡️ <strong>Basic Status Active:</strong> Your drawings stay for 7 days.
+                        </div>
+                    {% endif %}
+                    
+                    <a href="{{ url_for('manage_subscription') }}" class="btn btn-outline-primary me-2">Change Plan</a>
                     <a href="{{ url_for('payment_history') }}" class="btn btn-outline-secondary">Payment History</a>
                 {% else %}
-                    <p class="lead">❌ No Active Subscription</p>
-                    <p>You've used <strong>{{ user.drawings_count }}</strong> of 1 free drawing(s).</p>
+                    <p class="lead">❌ Free Tier</p>
+                    <div class="alert alert-danger">
+                        ⚠️ <strong>Warning:</strong> Your drawings will disappear after 24 hours!
+                    </div>
+                    <p>You've used <strong>{{ user.drawings_count }}</strong> of 3 free drawings.</p>
                     {% if user.stripe_subscription_id %}
                         <p class="text-muted small">You have a Stripe subscription ID but it's not active. 
                         <a href="{{ url_for('sync_subscription') }}">Click here to sync from Stripe</a>.</p>
                     {% endif %}
-                    <a href="{{ url_for('subscribe') }}" class="btn btn-primary">Subscribe Now</a>
+                    <a href="{{ url_for('subscribe') }}" class="btn btn-primary">Upgrade for Permanence</a>
                 {% endif %}
             </div>
         </div>

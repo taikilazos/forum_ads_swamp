@@ -36,7 +36,17 @@ class User(UserMixin, db.Model):
         """Check if user can create a new drawing."""
         if self.subscription_active:
             return True  # Paid users get unlimited
-        return self.drawings_count < 1  # Free users get 1 drawing
+        return self.drawings_count < 3  # Free users get 3 drawings
+
+    @property
+    def can_use_stickers(self):
+        """Check if user can use stickers (Pro & Premium)."""
+        return self.subscription_active and self.subscription_tier in ['pro', 'premium']
+
+    @property
+    def is_gold(self):
+        """Check if user is premium (Gold status)."""
+        return self.subscription_active and self.subscription_tier == 'premium'
 
 
 class Drawing(db.Model):

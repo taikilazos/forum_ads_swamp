@@ -13,6 +13,7 @@ import os
 # Add parent directory to path so we can import models
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from src.models import db, User, Drawing, PaymentHistory
+from datetime import datetime, timedelta
 
 # Load environment variables
 load_dotenv()
@@ -405,8 +406,16 @@ def save_drawing():
         # Get image data from request
         data = request.get_json()
         image_data = data.get('image_data', '')
-        message = data.get('message', '').strip() or None
+        message = (data.get('message') or '').strip() or None
         has_background = data.get('has_background', True)
+        has_stickers = data.get('has_stickers', False)
+
+        # Validate sticker usage
+        if has_stickers and not current_user.can_use_stickers:
+            return jsonify({
+                'success': False,
+                'message': "Stickers are a Pro feature! Upgrade to use them 🌟"
+            }), 403
         
         if not image_data:
             return jsonify({'success': False, 'message': 'No image data provided'}), 400
@@ -438,9 +447,26 @@ def save_drawing():
 
 @app.route('/gallery')
 def gallery():
-    """Gallery page showing all drawings floating."""
-    # Get all drawings, ordered by newest first
-    drawings = Drawing.query.order_by(Drawing.created_at.desc()).all()
+    """Gallery page showing all drawings floating with retention logic."""
+    now = datetime.utcnow()
+    cutoff_24h = now - timedelta(hours=24)
+    cutoff_7d = now - timedelta(days=7)
+    cutoff_30d = now - timedelta(days=30)
+
+    # Filter drawings based on user's tier and creation time
+    # Premium: Forever
+    # Pro: 30 days
+    # Basic: 7 days
+    # Free: 24 hours
+    drawings = db.session.query(Drawing).join(User).filter(
+        db.or_(
+            User.subscription_tier == 'premium',
+            db.and_(User.subscription_tier == 'pro', Drawing.created_at > cutoff_30d),
+            db.and_(User.subscription_tier == 'basic', Drawing.created_at > cutoff_7d),
+            db.and_(db.or_(User.subscription_tier == 'none', User.subscription_tier == None), Drawing.created_at > cutoff_24h)
+        )
+    ).order_by(Drawing.created_at.desc()).all()
+
     return render_template('gallery.html', drawings=drawings)
 
 

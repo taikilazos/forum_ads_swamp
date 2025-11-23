@@ -26,6 +26,29 @@ document.addEventListener('DOMContentLoaded', function() {
     let isDrawing = false;
     let lastX = 0;
     let lastY = 0;
+    let currentSticker = null;
+    let hasUsedStickers = false;
+
+    // Sticker buttons
+    const stickerBtns = document.querySelectorAll('.sticker-btn');
+    stickerBtns.forEach(btn => {
+        btn.addEventListener('click', function() {
+            const sticker = this.dataset.sticker;
+            
+            // Reset all buttons
+            stickerBtns.forEach(b => b.classList.remove('btn-secondary'));
+            stickerBtns.forEach(b => b.classList.add('btn-outline-secondary'));
+            
+            if (sticker === 'clear') {
+                currentSticker = null;
+            } else {
+                currentSticker = sticker;
+                // Highlight active sticker
+                this.classList.remove('btn-outline-secondary');
+                this.classList.add('btn-secondary');
+            }
+        });
+    });
     
     // Set canvas background to transparent (no fill)
     // This way only the drawing lines are saved, not a white background
@@ -74,8 +97,19 @@ document.addEventListener('DOMContentLoaded', function() {
     // Start drawing
     function startDraw(e) {
         e.preventDefault();
-        isDrawing = true;
         const pos = getPos(e);
+
+        if (currentSticker) {
+            // Draw sticker
+            ctx.font = `${brushSize.value * 5}px Arial`;
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(currentSticker, pos.x, pos.y);
+            hasUsedStickers = true;
+            return;
+        }
+
+        isDrawing = true;
         lastX = pos.x;
         lastY = pos.y;
         
@@ -91,7 +125,7 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Draw
     function draw(e) {
-        if (!isDrawing) return;
+        if (!isDrawing || currentSticker) return;
         e.preventDefault();
         
         const pos = getPos(e);
@@ -176,7 +210,8 @@ document.addEventListener('DOMContentLoaded', function() {
             body: JSON.stringify({
                 image_data: imageData,
                 message: message || null,
-                has_background: includeBackground
+                has_background: includeBackground,
+                has_stickers: hasUsedStickers
             })
         })
         .then(response => response.json())
